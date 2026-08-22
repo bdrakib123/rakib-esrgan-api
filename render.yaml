@@ -2,7 +2,7 @@ services:
   - type: web
     name: rakib-esrgan-api
     runtime: python
-    buildCommand: pip install --no-build-isolation ./basicsr-patched && pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && pip install --no-build-isolation ./basicsr-patched && pip install --no-deps realesrgan==0.3.0
     startCommand: python index.py
     envVars:
       - key: PYTHON_VERSION

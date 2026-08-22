@@ -6,4 +6,3 @@ opencv-python-headless==5.0.0.93
 Pillow==12.3.0
 torch==2.13.0
 torchvision==0.28.0
-realesrgan==0.3.0
