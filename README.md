@@ -1,94 +1,108 @@
 # 🚀 Rakib Real-ESRGAN API
 
-AI-powered image upscaling API built with Python, Flask, PyTorch and Real-ESRGAN.
+AI-powered image upscaling API using Real-ESRGAN.
 
-Enhance low-resolution images and generate high-quality 4x upscaled images.
+Enhance low-resolution images and generate high-quality 4× upscaled images with deep learning.
 
 ## ✨ Features
 
-- 🧠 Real-ESRGAN AI upscaling
-- 🔍 4x image enhancement
-- 🖼️ Image upload support
-- 🌐 Image URL support
-- ⚡ REST API
-- 🐍 Python + Flask
-- 🖥️ CPU compatible
-- ☁️ Render ready
-- 🌍 CORS enabled
-- 📱 Easy integration
+ AI-powered image upscaling  
+ RealESRGAN_x4plus model  
+ 4× image enhancement  
+ CPU support  
+ REST API  
+ Upload image directly  
+ Upscale image from URL  
+ CORS enabled  
+ Health check endpoint  
+ Render deployment ready  
 
-## 📡 API Endpoints
+## 🔥 API Endpoints
 
-### GET /
+### API Status
 
-Returns API information.
+GET /
 
-### GET /health
+Example response:
 
-Checks API status.
+{
+  "service": "Rakib Real-ESRGAN API",
+  "status": "online",
+  "model": "RealESRGAN_x4plus",
+  "scale": "4x",
+  "device": "CPU"
+}
 
-### POST /upscale
+### Health Check
 
-Upload an image and receive a 4x upscaled PNG.
+GET /health
+
+Returns the current API and model status.
+
+### Upload & Upscale
+
+POST /upscale
+
+Upload an image using multipart/form-data.
 
 Example:
 
 curl -X POST \
   -F "image=@image.jpg" \
-  https://YOUR-APP.onrender.com/upscale \
-  --output upscaled.png
+  http://localhost:5000/upscale \
+  --output result.png
 
-### POST /upscale-url
+### Upscale From URL
 
-Upscale an image from a URL.
+POST /upscale-url
 
 Example:
 
 curl -X POST \
   -H "Content-Type: application/json" \
   -d '{"url":"https://example.com/image.jpg"}' \
-  https://YOUR-APP.onrender.com/upscale-url \
-  --output upscaled.png
+  http://localhost:5000/upscale-url \
+  --output result.png
 
-## 🛠️ Technology
+## 🧠 Model
 
-- Python
-- Flask
-- PyTorch
-- Real-ESRGAN
-- BasicSR
-- OpenCV
-- Pillow
-- Flask-CORS
+Model: RealESRGAN_x4plus
 
-## 📁 Project Structure
+Upscaling: 4×
+
+Real-ESRGAN is a deep-learning based image restoration and super-resolution model.
+
+## 🛠️ Technologies
+
+Python  
+Flask  
+PyTorch  
+TorchVision  
+OpenCV  
+Pillow  
+BasicSR  
+Real-ESRGAN  
+
+## 📂 Project Structure
 
 rakib-esrgan-api/
-├── index.py
-├── requirements.txt
-├── render.yaml
-├── README.md
-├── .gitignore
-└── weights/
-    └── RealESRGAN_x4plus.pth
 
-## 🚀 Render Deployment
+ index.py
+ requirements.txt
+ render.yaml
+ README.md
+ LICENSE
 
-Build Command:
+ weights/
+   └── RealESRGAN_x4plus.pth
 
-pip install -r requirements.txt
+ basicsr-patched/
 
-Start Command:
-
-python index.py
-
-The API automatically uses the PORT provided by Render.
-
-## 💻 Local Installation
+## 💻 Local Setup
 
 Clone the repository:
 
-git clone https://github.com/bdrakib123/rakib-esrgan-api.git
+git clone https://github.com/hoon6t9/rakib-esrgan-api.git
 
 Enter the project:
 
@@ -106,39 +120,49 @@ Install dependencies:
 
 pip install -r requirements.txt
 
-Run:
+Start the API:
 
 python index.py
 
-## 🧠 Model
+Default local address:
 
-Model: RealESRGAN_x4plus
+http://127.0.0.1:5000
 
-Upscaling: 4x
+## ☁️ Render Deployment
 
-Device: CPU
+This project includes Render configuration.
 
-## ⚠️ Notes
+Build command:
 
-- Maximum upload size is 20 MB.
-- Processing speed depends on image resolution.
-- CPU processing is slower than GPU.
-- Large images may require more RAM.
-- Render free instances may take some time to wake up.
+pip install --no-build-isolation ./basicsr-patched && pip install -r requirements.txt
+
+Start command:
+
+python index.py
+
+The application automatically uses the PORT environment variable provided by Render.
+
+## ⚡ Performance
+
+Real-ESRGAN is computationally intensive.
+
+CPU processing may take longer for large images.
+
+GPU hardware is recommended for faster processing.
 
 ## 👨‍💻 Author
 
 Rakib Hasan
 
-GitHub:
-https://github.com/bdrakib123
+Built with ❤️ for AI-powered image enhancement.
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+See LICENSE for details.
 
 ## ⭐ Support
 
-If you find this project useful, consider giving the repository a star.
+If you find this project useful, consider giving the repository a ⭐ star.
 
-## 📜 License
-
-This project is for educational and development purposes.
-
-Real-ESRGAN is developed by its original authors.
