@@ -1,3 +1,5 @@
+import sys
+sys.path.insert(0, "./basicsr-patched")
 import os
 import io
 import cv2
