@@ -1,91 +1,146 @@
 import os
 import io
-import gc
 import requests
+import numpy as np
+import onnxruntime as ort
 
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+
 
 app = Flask(__name__)
 CORS(app)
 
-MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_FILE_SIZE = 20 * 1024 * 1024
+SCALE = 4
+
+MODEL_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "models",
+    "realesr-general-x4v3.onnx"
+)
 
 
-def process_image(data):
-    if not data:
+print("Loading ONNX model...")
+
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(
+        f"Model not found: {MODEL_PATH}"
+    )
+
+session = ort.InferenceSession(
+    MODEL_PATH,
+    providers=["CPUExecutionProvider"]
+)
+
+input_info = session.get_inputs()[0]
+output_info = session.get_outputs()[0]
+
+INPUT_NAME = input_info.name
+OUTPUT_NAME = output_info.name
+
+print("ONNX model loaded successfully.")
+print("Input:", INPUT_NAME)
+print("Output:", OUTPUT_NAME)
+
+
+def run_model(image_bytes):
+
+    if not image_bytes:
         raise ValueError("Empty image")
 
-    if len(data) > MAX_FILE_SIZE:
-        raise ValueError("Image size must be less than 10 MB")
+    if len(image_bytes) > MAX_FILE_SIZE:
+        raise ValueError("Image size must be less than 20 MB")
 
-    image = Image.open(io.BytesIO(data)).convert("RGB")
+    image = Image.open(
+        io.BytesIO(image_bytes)
+    ).convert("RGB")
 
-    # Prevent huge RAM usage
-    max_size = 2048
+    original_w, original_h = image.size
 
-    if max(image.size) > max_size:
-        ratio = max_size / max(image.size)
+    img = np.asarray(
+        image,
+        dtype=np.float32
+    ) / 255.0
 
-        image = image.resize(
-            (
-                int(image.width * ratio),
-                int(image.height * ratio)
-            ),
+    # RGB HWC -> NCHW
+    img = np.transpose(
+        img,
+        (2, 0, 1)
+    )
+
+    img = np.expand_dims(
+        img,
+        axis=0
+    )
+
+    # Run ONNX
+    result = session.run(
+        [OUTPUT_NAME],
+        {
+            INPUT_NAME: img
+        }
+    )[0]
+
+    # NCHW -> HWC
+    result = result[0]
+
+    result = np.transpose(
+        result,
+        (1, 2, 0)
+    )
+
+    result = np.clip(
+        result,
+        0,
+        1
+    )
+
+    result = (
+        result * 255.0
+    ).astype(np.uint8)
+
+    output = Image.fromarray(
+        result,
+        "RGB"
+    )
+
+    # Safety: make sure exact 4x size
+    expected_size = (
+        original_w * SCALE,
+        original_h * SCALE
+    )
+
+    if output.size != expected_size:
+        output = output.resize(
+            expected_size,
             Image.Resampling.LANCZOS
         )
 
-    # Lightweight 2x upscale
-    new_size = (
-        image.width * 2,
-        image.height * 2
-    )
+    buffer = io.BytesIO()
 
-    image = image.resize(
-        new_size,
-        Image.Resampling.LANCZOS
-    )
-
-    # Small sharpening
-    image = image.filter(
-        ImageFilter.UnsharpMask(
-            radius=1,
-            percent=80,
-            threshold=3
-        )
-    )
-
-    # Slight contrast enhancement
-    image = ImageEnhance.Contrast(
-        image
-    ).enhance(1.03)
-
-    output = io.BytesIO()
-
-    image.save(
-        output,
+    output.save(
+        buffer,
         format="JPEG",
-        quality=92,
+        quality=95,
         optimize=True
     )
 
-    output.seek(0)
+    buffer.seek(0)
 
-    image.close()
-    gc.collect()
-
-    return output
+    return buffer
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
+
     return jsonify({
-        "service": "Rakib Image Upscaler API",
+        "service": "Rakib Real-ESRGAN ONNX API",
         "status": "online",
-        "model": "Lightweight CPU",
-        "scale": "2x",
-        "device": "CPU",
+        "model": "realesr-general-x4v3",
+        "scale": "4x",
+        "runtime": "ONNX Runtime CPU",
         "endpoints": {
             "health": "/health",
             "upscale": "POST /upscale",
@@ -94,12 +149,13 @@ def home():
     })
 
 
-@app.route("/health")
+@app.route("/health", methods=["GET"])
 def health():
+
     return jsonify({
         "status": "ok",
-        "service": "Rakib Image Upscaler API",
-        "device": "CPU"
+        "model": "realesr-general-x4v3",
+        "runtime": "ONNX Runtime CPU"
     })
 
 
@@ -107,33 +163,31 @@ def health():
 def upscale():
 
     try:
+
         if "image" not in request.files:
             return jsonify({
                 "status": "error",
-                "message": "Use image field"
+                "message": "No image uploaded. Use field name: image"
             }), 400
 
         file = request.files["image"]
 
-        if not file.filename:
-            return jsonify({
-                "status": "error",
-                "message": "Invalid filename"
-            }), 400
+        image_bytes = file.read()
 
-        data = file.read()
-
-        result = process_image(data)
+        result = run_model(
+            image_bytes
+        )
 
         return send_file(
             result,
             mimetype="image/jpeg",
+            as_attachment=False,
             download_name="upscaled.jpg"
         )
 
     except Exception as e:
 
-        gc.collect()
+        print("Upscale error:", repr(e))
 
         return jsonify({
             "status": "error",
@@ -145,6 +199,7 @@ def upscale():
 def upscale_url():
 
     try:
+
         data = request.get_json(
             silent=True
         ) or {}
@@ -167,25 +222,23 @@ def upscale_url():
 
         response.raise_for_status()
 
-        if len(response.content) > MAX_FILE_SIZE:
-            return jsonify({
-                "status": "error",
-                "message": "Image too large"
-            }), 400
-
-        result = process_image(
+        result = run_model(
             response.content
         )
 
         return send_file(
             result,
             mimetype="image/jpeg",
+            as_attachment=False,
             download_name="upscaled.jpg"
         )
 
     except Exception as e:
 
-        gc.collect()
+        print(
+            "URL upscale error:",
+            repr(e)
+        )
 
         return jsonify({
             "status": "error",
@@ -196,17 +249,18 @@ def upscale_url():
 if __name__ == "__main__":
 
     port = int(
-        os.environ.get("PORT", 5000)
+        os.environ.get(
+            "PORT",
+            5000
+        )
     )
 
     print(
-        f"Rakib Image Upscaler running on port {port}",
-        flush=True
+        f"Rakib Real-ESRGAN ONNX API running on port {port}"
     )
 
     app.run(
         host="0.0.0.0",
         port=port,
-        debug=False,
-        threaded=False
+        debug=False
     )

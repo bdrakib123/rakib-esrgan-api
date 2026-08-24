@@ -3,7 +3,7 @@ services:
     name: rakib-esrgan-api
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: PYTHONPATH=./basicsr-patched python index.py
+    startCommand: python index.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3
